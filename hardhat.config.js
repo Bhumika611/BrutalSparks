@@ -29,6 +29,18 @@ module.exports = {
       gasPrice: 225000000000,
       chainId: 43114,
       accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : []
+    },
+    coreMainnet: {
+      url: "https://rpc.coredao.org",
+      gasPrice: 20000000000,
+      chainId: 1116,
+      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : []
+    },
+    coreTestnet: {
+      url: "https://rpc.test.btcs.network",
+      gasPrice: 20000000000,
+      chainId: 1115,
+      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : []
     }
   },
   paths: {

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
+import { ethers } from 'ethers';
 import DatasetCard from '../components/DatasetCard';
 import StatsCard from '../components/StatsCard';
 import ChatBot from '../components/ChatBot';
@@ -27,7 +28,7 @@ export default function Dashboard({ account, provider }) {
     try {
       setLoading(true);
       
-      const contractAddress = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || '0x5fbdb2315678afecb367f032d93f642f64180aa3';
+      const contractAddress = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || '0x5FbDB2315678afecb367f032d93F642f64180aa3';
       if (!contractAddress) {
         console.log('Contract address not set');
         setLoading(false);
@@ -35,14 +36,9 @@ export default function Dashboard({ account, provider }) {
       }
 
       const { ethers } = await import('ethers');
-      const contractABI = [
-        "function getUserDatasets(address _user) view returns (uint256[])",
-        "function getUserPurchases(address _user) view returns (uint256[])",
-        "function getDataset(uint256 _datasetId) view returns (tuple(uint256 id, address owner, string ipfsCID, string name, string description, string dataType, uint256 priceInAVAX, uint256 fileSize, bool isActive, uint256 purchaseCount, uint256 createdAt))",
-        "function getPurchase(uint256 _purchaseId) view returns (tuple(uint256 datasetId, address buyer, uint256 purchaseTime, string accessToken))"
-      ];
+      const { AIDataMarketplaceABI } = await import('../contracts/contractABI');
       
-      const contract = new ethers.Contract(contractAddress, contractABI, provider);
+      const contract = new ethers.Contract(contractAddress, AIDataMarketplaceABI, provider);
       
       // Load user's datasets and purchases
       const [userDatasetIds, userPurchaseIds] = await Promise.all([
@@ -63,15 +59,13 @@ export default function Dashboard({ account, provider }) {
         purchasedDatasetsData.push({
           ...dataset,
           purchaseId: purchaseId.toNumber(),
-          purchaseTime: purchase.purchaseTime.toNumber(),
+          purchaseTime: purchase.purchasedAt.toNumber(),
           accessToken: purchase.accessToken
         });
       }
       
-      // Calculate user stats
-      const totalEarnings = ownedDatasetsData.reduce((total, dataset) => {
-        return total + (dataset.purchaseCount.toNumber() * parseFloat(ethers.utils.formatEther(dataset.priceInAVAX)));
-      }, 0);
+      // Calculate user stats - Note: getDataset returns simplified structure
+      const totalEarnings = 0; // Can't calculate without purchaseCount from full dataset
       
       const totalSpent = purchasedDatasetsData.reduce((total, dataset) => {
         return total + parseFloat(ethers.utils.formatEther(dataset.priceInAVAX));

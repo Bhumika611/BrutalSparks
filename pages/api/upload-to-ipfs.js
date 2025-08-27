@@ -1,6 +1,6 @@
 import formidable from 'formidable';
 import fs from 'fs';
-import { create } from 'ipfs-http-client';
+import crypto from 'crypto';
 
 // Disable bodyParser for this API route to handle multipart form data
 export const config = {
@@ -9,36 +9,20 @@ export const config = {
   },
 };
 
-// Initialize IPFS client
-const getIPFSClient = () => {
-  // Try different IPFS providers
-  const providers = [
-    // Local IPFS node (if running)
-    { host: 'localhost', port: 5001, protocol: 'http' },
-    // Infura IPFS (requires project credentials)
-    {
-      host: 'ipfs.infura.io',
-      port: 5001,
-      protocol: 'https',
-      headers: process.env.IPFS_PROJECT_ID ? {
-        authorization: `Basic ${Buffer.from(
-          `${process.env.IPFS_PROJECT_ID}:${process.env.IPFS_PROJECT_SECRET}`
-        ).toString('base64')}`
-      } : undefined
-    }
-  ];
-
-  // Try each provider until one works
-  for (const provider of providers) {
-    try {
-      return create(provider);
-    } catch (error) {
-      console.log(`Failed to connect to IPFS provider:`, error.message);
-    }
-  }
+// Mock IPFS upload for development/testing
+const mockIPFSUpload = async (fileData, fileName) => {
+  // Generate a mock IPFS hash (CID) based on file content
+  const hash = crypto.createHash('sha256').update(fileData).digest('hex');
+  const mockCID = `Qm${hash.substring(0, 44)}`; // IPFS CID format
   
-  // Fallback to default
-  return create();
+  // Simulate upload delay
+  await new Promise(resolve => setTimeout(resolve, 2000));
+  
+  return {
+    cid: mockCID,
+    size: fileData.length,
+    path: fileName
+  };
 };
 
 // Encrypt data (simple XOR encryption for demo - use proper encryption in production)
@@ -103,48 +87,28 @@ export default async function handler(req, res) {
       ipfsVersion: '1.0'
     };
 
-    // Initialize IPFS client
-    const ipfs = getIPFSClient();
+    console.log('Uploading to IPFS (mock)...');
     
-    console.log('Uploading to IPFS...');
+    // Use mock IPFS upload for development
+    const fileResult = await mockIPFSUpload(encryptedData, `encrypted_${file.originalFilename}`);
     
-    // Upload encrypted file to IPFS
-    const fileResult = await ipfs.add({
-      content: encryptedData,
-      path: `encrypted_${file.originalFilename}`
+    console.log('File uploaded to IPFS:', fileResult.cid);
+    
+    // Create metadata hash
+    const metadataContent = JSON.stringify(fileMetadata, null, 2);
+    const metadataResult = await mockIPFSUpload(Buffer.from(metadataContent), 'metadata.json');
+    
+    console.log('Metadata uploaded to IPFS:', metadataResult.cid);
+    
+    // Generate directory hash (combine file and metadata hashes)
+    const directoryContent = JSON.stringify({
+      file: fileResult.cid,
+      metadata: metadataResult.cid,
+      timestamp: new Date().toISOString()
     });
+    const directoryHash = await mockIPFSUpload(Buffer.from(directoryContent), 'directory.json');
     
-    console.log('File uploaded to IPFS:', fileResult.cid.toString());
-    
-    // Upload metadata to IPFS
-    const metadataResult = await ipfs.add({
-      content: JSON.stringify(fileMetadata, null, 2),
-      path: 'metadata.json'
-    });
-    
-    console.log('Metadata uploaded to IPFS:', metadataResult.cid.toString());
-    
-    // Create a directory containing both file and metadata
-    const directoryFiles = [
-      {
-        path: 'dataset/encrypted_data',
-        content: encryptedData
-      },
-      {
-        path: 'dataset/metadata.json',
-        content: JSON.stringify(fileMetadata, null, 2)
-      }
-    ];
-    
-    // Upload directory to IPFS
-    let directoryHash = '';
-    for await (const result of ipfs.addAll(directoryFiles, { wrapWithDirectory: true })) {
-      if (result.path === '') {
-        directoryHash = result.cid.toString();
-      }
-    }
-    
-    console.log('Directory uploaded to IPFS:', directoryHash);
+    console.log('Directory uploaded to IPFS:', directoryHash.cid);
     
     // Clean up temporary file
     try {
@@ -156,11 +120,11 @@ export default async function handler(req, res) {
     // Return success response
     res.status(200).json({
       success: true,
-      ipfsHash: directoryHash,
-      fileHash: fileResult.cid.toString(),
-      metadataHash: metadataResult.cid.toString(),
+      ipfsHash: directoryHash.cid,
+      fileHash: fileResult.cid,
+      metadataHash: metadataResult.cid,
       metadata: fileMetadata,
-      message: 'File uploaded successfully to IPFS'
+      message: 'File uploaded successfully to IPFS (mock)'
     });
     
   } catch (error) {
@@ -181,7 +145,8 @@ export default async function handler(req, res) {
     res.status(500).json({
       success: false,
       error: 'Failed to upload to IPFS',
-      details: error.message
+      details: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 }

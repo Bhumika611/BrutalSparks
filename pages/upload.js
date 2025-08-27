@@ -56,6 +56,11 @@ export default function Upload({ account, provider }) {
       return;
     }
 
+    if (!formData.name || !formData.description || !formData.priceInAVAX) {
+      alert('Please fill in all required fields');
+      return;
+    }
+
     setUploading(true);
     setStep(2);
 
@@ -72,6 +77,8 @@ export default function Upload({ account, provider }) {
         fileName: formData.file.name
       }));
 
+      console.log('Starting IPFS upload...');
+      
       // Upload to IPFS (using local API or Pinata/Infura)
       const response = await fetch('/api/upload-to-ipfs', {
         method: 'POST',
@@ -81,6 +88,7 @@ export default function Upload({ account, provider }) {
       const result = await response.json();
       
       if (result.success) {
+        console.log('IPFS upload successful:', result);
         setIpfsHash(result.ipfsHash);
         setStep(3);
         await registerOnBlockchain(result.ipfsHash);
@@ -103,18 +111,16 @@ export default function Upload({ account, provider }) {
         throw new Error('Please connect your wallet first');
       }
 
-      const contractAddress = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || '0x5fbdb2315678afecb367f032d93f642f64180aa3';
+      const contractAddress = '0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512'; // Updated contract address from deployment
       if (!contractAddress) {
         throw new Error('Contract not deployed. Please deploy the contract first.');
       }
 
       const { ethers } = await import('ethers');
-      const contractABI = [
-        "function uploadDataset(string memory _ipfsCID, string memory _name, string memory _description, string memory _dataType, uint256 _priceInAVAX, uint256 _fileSize) external returns (uint256)"
-      ];
+      const { AIDataMarketplaceABI } = await import('../contracts/contractABI');
 
       const signer = provider.getSigner();
-      const contract = new ethers.Contract(contractAddress, contractABI, signer);
+      const contract = new ethers.Contract(contractAddress, AIDataMarketplaceABI, signer);
 
       // Convert price to wei (AVAX has 18 decimals)
       const priceInWei = ethers.utils.parseEther(formData.priceInAVAX);
@@ -293,11 +299,16 @@ export default function Upload({ account, provider }) {
                 <button
                   type="button"
                   onClick={handleIPFSUpload}
-                  disabled={!formData.name || !formData.description || !formData.priceInAVAX || !formData.file}
+                  disabled={!formData.name || !formData.description || !formData.priceInAVAX || !formData.file || uploading}
                   className="btn btn-primary"
                 >
-                  🚀 Upload Dataset
+                  {uploading ? '⏳ Processing...' : '🚀 Upload Dataset'}
                 </button>
+                {uploading && (
+                  <p className="upload-status-text">
+                    Please wait while we upload your dataset to IPFS...
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -311,6 +322,20 @@ export default function Upload({ account, provider }) {
               <p>Your dataset is being encrypted and uploaded to the decentralized storage network.</p>
               <div className="loading-bar">
                 <div className="loading-progress"></div>
+              </div>
+              <div className="upload-steps">
+                <div className="step-item">
+                  <span className="step-icon">🔒</span>
+                  <span>Encrypting data...</span>
+                </div>
+                <div className="step-item">
+                  <span className="step-icon">📤</span>
+                  <span>Uploading to IPFS...</span>
+                </div>
+                <div className="step-item">
+                  <span className="step-icon">🔗</span>
+                  <span>Generating content hash...</span>
+                </div>
               </div>
             </div>
           </div>

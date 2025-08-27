@@ -8,6 +8,8 @@
     "deploy": "hardhat run scripts/deploy.js --network hardhat",
     "deploy:fuji": "hardhat run scripts/deploy.js --network avalancheFuji",
     "deploy:mainnet": "hardhat run scripts/deploy.js --network avalancheMainnet",
+    "deploy:core": "hardhat run scripts/deploy.js --network coreMainnet",
+    "deploy:core-test": "hardhat run scripts/deploy.js --network coreTestnet",
     "node": "hardhat node",
     "dev": "next dev",
     "build": "next build",
@@ -19,6 +21,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@metamask/detect-provider": "^2.0.0",
     "@openzeppelin/contracts": "^5.4.0",
     "axios": "^1.11.0",
     "cors": "^2.8.5",

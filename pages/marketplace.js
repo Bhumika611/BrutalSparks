@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { ethers } from 'ethers';
+import { AIDataMarketplaceABI, CONTRACT_ADDRESS } from '../contracts/contractABI';
 import DatasetCard from '../components/DatasetCard';
 import FilterSidebar from '../components/FilterSidebar';
 import ChatBot from '../components/ChatBot';
@@ -32,24 +34,12 @@ export default function Marketplace({ account, provider }) {
   const loadDatasets = async () => {
     try {
       setLoading(true);
-      
-      const contractAddress = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || '0x5fbdb2315678afecb367f032d93f642f64180aa3';
-      if (!contractAddress) {
-        console.log('Contract address not set');
-        setLoading(false);
-        return;
-      }
+      const contract = new ethers.Contract(CONTRACT_ADDRESS, AIDataMarketplaceABI, provider);
+      let datasetsData = await contract.getAllActiveDatasets();
 
-      const { ethers } = await import('ethers');
-      const contractABI = [
-        "function getAllActiveDatasets() view returns (tuple(uint256 id, address owner, string ipfsCID, string name, string description, string dataType, uint256 priceInAVAX, uint256 fileSize, bool isActive, uint256 purchaseCount, uint256 createdAt)[])"
-      ];
-      
-      const contract = new ethers.Contract(contractAddress, contractABI, provider);
-      const datasetsData = await contract.getAllActiveDatasets();
-      
+      // Force all dataset prices to 0 for zero-fee
+      datasetsData = datasetsData.map(ds => ({ ...ds, priceInAVAX: ethers.utils.parseEther("0") }));
       setDatasets(datasetsData);
-      
     } catch (error) {
       console.error('Error loading datasets:', error);
     } finally {
@@ -59,29 +49,10 @@ export default function Marketplace({ account, provider }) {
 
   const loadUserPurchases = async () => {
     if (!account) return;
-    
     try {
-      const contractAddress = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || '0x5fbdb2315678afecb367f032d93f642f64180aa3';
-      console.log('Contract Address:', contractAddress);
-      console.log('Environment variables:', {
-        NEXT_PUBLIC_CONTRACT_ADDRESS: process.env.NEXT_PUBLIC_CONTRACT_ADDRESS,
-        NEXT_PUBLIC_CHAIN_ID: process.env.NEXT_PUBLIC_CHAIN_ID
-      });
-      
-      if (!contractAddress) {
-        console.error('Contract address is undefined!');
-        return;
-      }
-      
-      const { ethers } = await import('ethers');
-      const contractABI = [
-        "function getUserPurchases(address _user) view returns (uint256[])"
-      ];
-      
-      const contract = new ethers.Contract(contractAddress, contractABI, provider);
+      const contract = new ethers.Contract(CONTRACT_ADDRESS, AIDataMarketplaceABI, provider);
       const userPurchases = await contract.getUserPurchases(account);
       setPurchasedDatasets(userPurchases.map(id => id.toNumber()));
-      
     } catch (error) {
       console.error('Error loading user purchases:', error);
     }
@@ -89,19 +60,16 @@ export default function Marketplace({ account, provider }) {
 
   const applyFilters = () => {
     let filtered = [...datasets];
-    
-    // Filter by data type
+
     if (filters.dataType !== 'all') {
       filtered = filtered.filter(dataset => dataset.dataType === filters.dataType);
     }
-    
-    // Filter by price range
+
     filtered = filtered.filter(dataset => {
       const priceInAVAX = parseFloat(ethers.utils.formatEther(dataset.priceInAVAX));
       return priceInAVAX >= filters.priceRange[0] && priceInAVAX <= filters.priceRange[1];
     });
-    
-    // Sort datasets
+
     switch (filters.sortBy) {
       case 'newest':
         filtered.sort((a, b) => b.createdAt - a.createdAt);
@@ -118,8 +86,10 @@ export default function Marketplace({ account, provider }) {
       case 'popular':
         filtered.sort((a, b) => b.purchaseCount - a.purchaseCount);
         break;
+      default:
+        break;
     }
-    
+
     setFilteredDatasets(filtered);
   };
 
@@ -134,33 +104,22 @@ export default function Marketplace({ account, provider }) {
       return;
     }
 
-    setPurchasing(true);
-    setSelectedDataset(dataset);
+    if (purchasedDatasets.includes(dataset.id.toNumber())) {
+      alert('You already have access to this dataset');
+      return;
+    }
 
     try {
-      const contractAddress = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || '0x5fbdb2315678afecb367f032d93f642f64180aa3';
-      const { ethers } = await import('ethers');
-      const contractABI = [
-        "function purchaseDataset(uint256 _datasetId) external payable returns (uint256)"
-      ];
-
+      setPurchasing(true);
       const signer = provider.getSigner();
-      const contract = new ethers.Contract(contractAddress, contractABI, signer);
+      const contract = new ethers.Contract(CONTRACT_ADDRESS, AIDataMarketplaceABI, signer);
 
-      console.log('Purchasing dataset:', dataset.id);
-      const tx = await contract.purchaseDataset(dataset.id, {
-        value: dataset.priceInAVAX
-      });
+      // 0 fee purchase
+      const tx = await contract.purchaseDataset(dataset.id, { value: ethers.utils.parseEther("0") });
+      await tx.wait();
 
-      console.log('Transaction submitted:', tx.hash);
-      const receipt = await tx.wait();
-      console.log('Purchase confirmed:', receipt);
-
-      // Show success and option to start training
-      alert('Dataset purchased successfully!');
-      await loadUserPurchases(); // Refresh user purchases
-      setShowTraining(true);
-
+      alert('Dataset purchased successfully (free of charge)!');
+      loadUserPurchases();
     } catch (error) {
       console.error('Purchase error:', error);
       alert('Failed to purchase dataset: ' + error.message);
@@ -169,175 +128,115 @@ export default function Marketplace({ account, provider }) {
     }
   };
 
-  const handleStartTraining = (dataset) => {
-    setSelectedDataset(dataset);
-    setShowTraining(true);
-  };
+  const handleDatasetSelect = (dataset) => setSelectedDataset(dataset);
+  const handleCloseDataset = () => setSelectedDataset(null);
+  const handleShowTraining = () => setShowTraining(true);
+  const handleCloseTraining = () => setShowTraining(false);
 
-  const dataTypeOptions = [
-    { value: 'all', label: 'All Types', icon: '📊' },
-    { value: 'medical', label: 'Medical', icon: '🏥' },
-    { value: 'financial', label: 'Financial', icon: '🏦' },
-    { value: 'behavioral', label: 'Behavioral', icon: '🛍️' },
-    { value: 'iot', label: 'IoT / Sensors', icon: '📡' },
-    { value: 'research', label: 'Research', icon: '🔬' },
-    { value: 'other', label: 'Other', icon: '📄' }
-  ];
+  if (loading) {
+    return (
+      <div className="marketplace-page">
+        <div className="container">
+          <div className="loading">
+            <div className="spinner"></div>
+            <p>Loading marketplace...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="marketplace-page">
       <div className="container">
-        <div className="marketplace-header">
-          <h1>🛒 AI Data Marketplace</h1>
-          <p>Discover and purchase high-quality datasets for AI training</p>
-          
-          <div className="marketplace-stats">
-            <div className="stat">
-              <span className="stat-value">{datasets.length}</span>
-              <span className="stat-label">Available Datasets</span>
-            </div>
-            <div className="stat">
-              <span className="stat-value">{filteredDatasets.length}</span>
-              <span className="stat-label">Filtered Results</span>
-            </div>
-            <div className="stat">
-              <span className="stat-value">{purchasedDatasets.length}</span>
-              <span className="stat-label">Your Purchases</span>
-            </div>
-          </div>
+        <div className="page-header">
+          <h1>🛒 AI Training Dataset Marketplace</h1>
+          <p>Browse and access high-quality datasets for AI model training, completely free!</p>
         </div>
 
         <div className="marketplace-content">
-          {/* Filters Sidebar */}
-          <div className="filters-sidebar">
-            <h3>🔍 Filters</h3>
-            
-            <div className="filter-group">
-              <label>Data Type</label>
-              <select
-                value={filters.dataType}
-                onChange={(e) => setFilters({...filters, dataType: e.target.value})}
-              >
-                {dataTypeOptions.map(option => (
-                  <option key={option.value} value={option.value}>
-                    {option.icon} {option.label}
-                  </option>
-                ))}
-              </select>
-            </div>
+          <FilterSidebar 
+            filters={filters} 
+            onFilterChange={setFilters}
+            datasets={datasets}
+          />
 
-            <div className="filter-group">
-              <label>Price Range (AVAX)</label>
-              <div className="price-range">
-                <input
-                  type="range"
-                  min="0"
-                  max="10"
-                  step="0.1"
-                  value={filters.priceRange[1]}
-                  onChange={(e) => setFilters({
-                    ...filters, 
-                    priceRange: [0, parseFloat(e.target.value)]
-                  })}
-                />
-                <span>0 - {filters.priceRange[1]} AVAX</span>
-              </div>
-            </div>
-
-            <div className="filter-group">
-              <label>Sort By</label>
-              <select
-                value={filters.sortBy}
-                onChange={(e) => setFilters({...filters, sortBy: e.target.value})}
-              >
-                <option value="newest">Newest First</option>
-                <option value="oldest">Oldest First</option>
-                <option value="price-low">Price: Low to High</option>
-                <option value="price-high">Price: High to Low</option>
-                <option value="popular">Most Popular</option>
-              </select>
-            </div>
-
-            {account && (
-              <div className="user-section">
-                <h4>Your Activity</h4>
-                <p>{purchasedDatasets.length} datasets purchased</p>
-                <button 
-                  className="btn btn-secondary btn-small"
-                  onClick={() => router.push('/dashboard')}
-                >
-                  View Dashboard
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* Main Content */}
-          <div className="marketplace-main">
-            {loading ? (
-              <div className="loading-grid">
-                {[...Array(6)].map((_, i) => (
-                  <div key={i} className="dataset-card loading">
-                    <div className="loading-placeholder"></div>
-                  </div>
-                ))}
-              </div>
-            ) : filteredDatasets.length > 0 ? (
-              <div className="datasets-grid">
-                {filteredDatasets.map((dataset) => (
-                  <DatasetCard
-                    key={dataset.id}
-                    dataset={dataset}
-                    onPurchase={handlePurchase}
-                    onStartTraining={handleStartTraining}
-                    isPurchased={purchasedDatasets.includes(dataset.id.toNumber())}
-                    isOwner={account && dataset.owner.toLowerCase() === account.toLowerCase()}
-                    purchasing={purchasing && selectedDataset?.id === dataset.id}
-                  />
-                ))}
-              </div>
-            ) : (
-              <div className="no-results">
-                <span className="no-results-icon">🔍</span>
+          <div className="datasets-grid">
+            {filteredDatasets.length === 0 ? (
+              <div className="no-datasets">
                 <h3>No datasets found</h3>
                 <p>Try adjusting your filters or check back later for new datasets.</p>
               </div>
+            ) : (
+              filteredDatasets.map((dataset) => (
+                <DatasetCard
+                  key={dataset.id.toString()}
+                  dataset={dataset}
+                  onSelect={handleDatasetSelect}
+                  onPurchase={handlePurchase}
+                  isPurchased={purchasedDatasets.includes(dataset.id.toNumber())}
+                  purchasing={purchasing}
+                  account={account}
+                />
+              ))
             )}
           </div>
         </div>
 
-        {/* Purchase Modal */}
-        {purchasing && selectedDataset && (
-          <div className="modal-overlay">
-            <div className="modal">
-              <div className="modal-header">
-                <h3>🛒 Purchasing Dataset</h3>
-              </div>
-              <div className="modal-body">
-                <div className="purchase-details">
-                  <h4>{selectedDataset.name}</h4>
-                  <p>Price: {ethers.utils.formatEther(selectedDataset.priceInAVAX)} AVAX</p>
-                  <div className="loading-animation">
-                    <div className="spinner"></div>
-                    <p>Please confirm the transaction in your wallet...</p>
-                  </div>
+        {selectedDataset && (
+          <div className="dataset-modal">
+            <div className="modal-content">
+              <button className="close-btn" onClick={handleCloseDataset}>×</button>
+              <h2>{selectedDataset.name}</h2>
+              <p className="description">{selectedDataset.description}</p>
+
+              <div className="dataset-details">
+                <div className="detail">
+                  <span className="label">Data Type:</span>
+                  <span className="value">{selectedDataset.dataType}</span>
                 </div>
+                <div className="detail">
+                  <span className="label">Price:</span>
+                  <span className="value">0 ETH</span>
+                </div>
+                <div className="detail">
+                  <span className="label">File Size:</span>
+                  <span className="value">{(selectedDataset.fileSize / (1024 * 1024)).toFixed(2)} MB</span>
+                </div>
+                <div className="detail">
+                  <span className="label">Purchase Count:</span>
+                  <span className="value">{selectedDataset.purchaseCount.toString()}</span>
+                </div>
+              </div>
+
+              <div className="modal-actions">
+                <button 
+                  className="btn btn-primary"
+                  onClick={() => handlePurchase(selectedDataset)}
+                  disabled={purchasing || selectedDataset.owner.toLowerCase() === account?.toLowerCase()}
+                >
+                  {purchasing ? 'Processing...' : 'Get Dataset (Free)'}
+                </button>
+                <button 
+                  className="btn btn-secondary"
+                  onClick={handleShowTraining}
+                >
+                  🚀 Try AI Training
+                </button>
               </div>
             </div>
           </div>
         )}
 
-        {/* Training Simulation Modal */}
-        {showTraining && selectedDataset && (
-          <TrainingSimulation
+        {showTraining && (
+          <TrainingSimulation 
             dataset={selectedDataset}
-            onClose={() => setShowTraining(false)}
-            account={account}
+            onClose={handleCloseTraining}
           />
         )}
-      </div>
 
-      <ChatBot account={account} />
+        <ChatBot />
+      </div>
     </div>
   );
 }
