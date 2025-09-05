@@ -1,62 +1,52 @@
 Decentralized AI Marketplace
 
-A decentralized marketplace for buying and selling AI datasets using blockchain technology and IPFS for secure data storage.
+A decentralized marketplace for buying and selling AI datasets using blockchain technology and IPFS for secure, censorship-resistant storage. Built with Solidity, Hardhat, Ethers.js, and Next.js/React, it empowers researchers and organizations to share and monetize datasets transparently.
 
-Features
+✨ Features
 
-Smart Contract: Ethereum-based smart contract for managing dataset transactions.
+Smart Contracts: On-chain management of dataset listings and purchases
 
-IPFS Integration: Decentralized storage for datasets using IPFS.
+IPFS Integration: Decentralized storage of datasets with immutable references
 
-Web3 Integration: Frontend built with Next.js and React for interacting with the blockchain.
+Web3 Frontend: Next.js + React interface with MetaMask wallet support
 
-Secure Transactions: Escrow-based system ensuring fair and transparent transactions.
+Secure Transactions: Escrow-style payments with automatic distribution to dataset owners
 
-Smart Contract Capabilities
+Privacy & Ownership: Data providers retain full control while monetizing securely
 
-Upload datasets with IPFS hash and price.
+🔒 Smart Contract Capabilities
 
-Purchase datasets with ETH.
+Upload datasets with an IPFS hash and a price in ETH
 
-Automatic payment distribution to dataset owners.
+Purchase datasets with ETH (or native token of EVM network)
 
-Prevention of double-purchasing.
+Prevent double-purchasing by the same buyer
 
-Event emission for frontend integration.
+Emit events for seamless frontend interaction
 
-Project Structure
-decentralized-ai-marketplace/
-├── contracts/
-│   └── DataMarketplace.sol       # Main smart contract
-├── scripts/
-│   └── deploy.js                 # Deployment script
-├── test/
-│   └── DataMarketplace.test.js   # Smart contract tests
-├── hardhat.config.js             # Hardhat configuration
-├── package.json                  # Dependencies and scripts
-└── README.md                     # Project documentation
+Automatic payment transfer to dataset owners
 
-Prerequisites
+✅ Prerequisites
 
-Node.js (v14 or higher)
+Before starting, ensure you have the following installed:
+
+Node.js
+ (v14 or higher)
 
 npm or yarn
 
-MetaMask or another Web3 wallet
+MetaMask
+ or another Web3 wallet
 
-Installation
+Access to a blockchain network (Hardhat local node, Ethereum testnet, or Avalanche Fuji)
 
-Clone the repository:
+⚙️ Installation
+# Clone the repository
+git clone https://github.com/Bhumika611/BrutalSparks.git
+cd BrutalSparks
 
-git clone <repository_url>
-cd decentralized-ai-marketplace
-
-
-Install dependencies:
-
+# Install dependencies
 npm install
-
-Usage
 Compile Smart Contracts
 npm run compile
 
@@ -64,93 +54,55 @@ Run Tests
 npm run test
 
 Deploy to Local Network
-# Start local Hardhat node
+# Terminal 1: Start Hardhat local node
 npm run node
 
-# In another terminal, deploy the contract
+# Terminal 2: Deploy contracts
 npm run deploy
 
 Start Development Server
 npm run dev
+📜 Smart Contract Functions
+uploadDataset(string _ipfsHash, uint256 _price)
 
-Smart Contract Functions
-uploadDataset(string memory _ipfsHash, uint _price)
+Upload a dataset with an associated IPFS hash and price.
 
-Upload a new dataset to the marketplace.
+_ipfsHash: IPFS content identifier (CID)
 
-_ipfsHash: IPFS hash of the dataset.
+_price: Price in wei
 
-_price: Price in wei.
-
-purchaseDataset(uint _id)
+purchaseDataset(uint256 _id) (payable)
 
 Purchase a dataset by its ID.
 
-_id: Dataset ID to purchase.
+_id: Dataset ID
 
-Requires sending the exact price in ETH.
+Must send the exact price in ETH
 
-Testing
+🧷 Testing
 
-The project includes comprehensive tests covering:
+The project includes tests for:
 
-Dataset upload functionality.
+Dataset uploads
 
-Dataset purchase with correct payment.
+Successful purchases with correct payment
 
-Error handling for insufficient payment.
+Handling insufficient payment
 
-Prevention of double-purchasing.
+Preventing double purchases
 
 Run tests with:
 
 npm run test
 
-Development
-Adding New Features
+🔐 Security Considerations
 
-Modify the smart contract in contracts/DataMarketplace.sol.
+Always verify IPFS hashes before purchasing
 
-Update tests in test/DataMarketplace.test.js.
+Use wallets with test funds for development
 
-Update deployment script if needed.
+Ensure error handling and input validation in contracts
 
-Test thoroughly before deployment.
+Test thoroughly on testnets before deploying to mainnet
 
-Frontend Integration
-
-The frontend uses Next.js. Key integration points:
-
-Connect to a Web3 provider (MetaMask).
-
-Interact with smart contract functions.
-
-Handle IPFS uploads and retrievals.
-
-Manage user transactions and confirmations.
-
-Security Considerations
-
-Always verify IPFS hashes before purchase.
-
-Use proper access controls for sensitive operations.
-
-Implement proper error handling.
-
-Test thoroughly on testnets before mainnet deployment.
-
-License
-
-ISC
-
-Contributing
-
-Fork the repository.
-
-Create a feature branch.
-
-Make your changes.
-
-Add tests for new functionality.
-
-Submit a pull request.
+Consider gas optimization and reentrancy protection
