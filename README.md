@@ -1,46 +1,41 @@
-Decentralized AI Marketplace
+# Decentralized AI Marketplace
 
 A decentralized marketplace for buying and selling AI datasets using blockchain technology and IPFS for secure, censorship-resistant storage. Built with Solidity, Hardhat, Ethers.js, and Next.js/React, it empowers researchers and organizations to share and monetize datasets transparently.
 
-✨ Features
+---
 
-Smart Contracts: On-chain management of dataset listings and purchases
+## ✨ Features
 
-IPFS Integration: Decentralized storage of datasets with immutable references
+- **Smart Contracts**: On-chain management of dataset listings and purchases  
+- **IPFS Integration**: Decentralized storage of datasets with immutable references  
+- **Web3 Frontend**: Next.js + React interface with MetaMask wallet support  
+- **Secure Transactions**: Escrow-style payments with automatic distribution to dataset owners  
+- **Privacy & Ownership**: Data providers retain full control while monetizing securely  
 
-Web3 Frontend: Next.js + React interface with MetaMask wallet support
+---
 
-Secure Transactions: Escrow-style payments with automatic distribution to dataset owners
+## 🔒 Smart Contract Capabilities
 
-Privacy & Ownership: Data providers retain full control while monetizing securely
+- Upload datasets with an **IPFS hash** and a **price in ETH**  
+- Purchase datasets with **ETH** (or native token of EVM network)  
+- Prevent **double-purchasing** by the same buyer  
+- Emit **events** for seamless frontend interaction  
+- Automatic payment transfer to dataset owners  
 
-🔒 Smart Contract Capabilities
+---
 
-Upload datasets with an IPFS hash and a price in ETH
-
-Purchase datasets with ETH (or native token of EVM network)
-
-Prevent double-purchasing by the same buyer
-
-Emit events for seamless frontend interaction
-
-Automatic payment transfer to dataset owners
-
-✅ Prerequisites
+## ✅ Prerequisites
 
 Before starting, ensure you have the following installed:
 
-Node.js
- (v14 or higher)
+- [Node.js](https://nodejs.org/) (v14 or higher)  
+- npm or yarn  
+- [MetaMask](https://metamask.io/) or another Web3 wallet  
+- Access to a blockchain network (Hardhat local node, Ethereum testnet, or Avalanche Fuji)  
 
-npm or yarn
+---
 
-MetaMask
- or another Web3 wallet
-
-Access to a blockchain network (Hardhat local node, Ethereum testnet, or Avalanche Fuji)
-
-⚙️ Installation
+## ⚙️ Installation
 # Clone the repository
 git clone https://github.com/Bhumika611/BrutalSparks.git
 cd BrutalSparks
@@ -62,7 +57,8 @@ npm run deploy
 
 Start Development Server
 npm run dev
-📜 Smart Contract Functions
+
+# Smart Contract Functions
 uploadDataset(string _ipfsHash, uint256 _price)
 
 Upload a dataset with an associated IPFS hash and price.
@@ -79,7 +75,7 @@ _id: Dataset ID
 
 Must send the exact price in ETH
 
-🧷 Testing
+# Testing
 
 The project includes tests for:
 
@@ -95,7 +91,7 @@ Run tests with:
 
 npm run test
 
-🔐 Security Considerations
+# Security Considerations
 
 Always verify IPFS hashes before purchasing
 
